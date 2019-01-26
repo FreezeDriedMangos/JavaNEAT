@@ -25,7 +25,11 @@ public class Main extends DrawablePopulation {
 			float err4 = Math.abs(answer4 - 0);
 		
 			float raw = 4 - (err1+err2+err3+err4);
-			gn.setFitness(Math.signum(raw) * raw*raw);
+			float squared = Math.signum(raw) * raw*raw;
+			
+			gn.setFitness(squared);
+			
+			
 		}
 	}
 	

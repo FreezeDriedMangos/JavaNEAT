@@ -91,8 +91,12 @@ public abstract class DataPanel implements Comparable<DataPanel> {
 	public abstract float getDrawComplexity();
 	
 	/**
-	 * Called when this data panel is clicked. The x and y values are not relative to this
-	 * panel. They are relative to the top left corner of the drawspace.
+	 * Called when this data panel is clicked. The values x and y are relative to this data panel
 	 */
-	public abstract void handleClick(int x, int y);
+	public void handleClick(int x, int y) {}
+	
+	/**
+	 * Called when the mouse wheel is scrolled while the mouse hovers over this data panel. The values x and y are relative to this data panel
+	 */
+	public void handleScroll(int x, int y, double scrollAmount) {}
 }

@@ -30,6 +30,14 @@ public class Genome {
 	//
 	// ============================================================
 	
+	/**
+	 * Creates a genome purely for testing purposes, not meant to join the population. 
+	 * Keep this specimen contained within the lab. Don't let it escape.
+	 */
+	public static Genome createTestingGenome() {
+		return new Genome();
+	}
+	
 	private Genome() {
 		connectionGenes = new ArrayList<>();
 		nodeGenes       = new ArrayList<>();
@@ -81,6 +89,9 @@ public class Genome {
 	 * to provide some output. Note: for ease of implementation, there is only
 	 * one bias node, which is treated as an input node. This bias node is always
 	 * at index 0.
+	 * <br>
+	 * Note: you do not have to include a bias value in the input array, it is added 
+	 * automatically.
 	 */
 	public float[] evaluate(float[] input) {
 		if(input.length != numSensorNodes-1) {
@@ -373,6 +384,17 @@ public class Genome {
 	public List<ConnectionGene> getConnectionGenes() {
 		return connectionGenes;
 	}
+	public List<NodeGene> getNodeGenes() {
+		return nodeGenes;
+	}
+	
+	/**
+	 * returns the number of genes in this genome, ie <br>
+	 * <code>connectionGenes.size() + nodeGenes.size()</code>
+	 */
+	public int size() {
+		return connectionGenes.size() + nodeGenes.size();
+	}
 	
 	// ============================================================
 	//
@@ -526,63 +548,163 @@ public class Genome {
 	 * connection genes
 	 */
 	public static float delta(Genome genome1, Genome genome2, float c1, float c2, float c3) {
-		int numExcess = 0;
-		int numDisjoint = 0;
-		int numCommon = 0;
-		double totalWeightDifference = 0;
-		
-		int g1Size = genome1.connectionGenes.size();
-		int g2Size = genome2.connectionGenes.size();
-		int i;
-		int j;
-		for(i = j = 0; i < g1Size && j < g2Size; ) {
-			ConnectionGene g1 = genome1.connectionGenes.get(i); 
-			ConnectionGene g2 = genome2.connectionGenes.get(j); 
-			
-			if(g1.innovation == g2.innovation) {
-				numCommon++;
-				totalWeightDifference += Math.abs(g1.weight - g2.weight);
-				
-				i++;
-				j++;	
-			} else if (g1.innovation < g2.innovation) {
-				// This is the case where g1 is disjoint/excess
-			
-				if(j < g2Size) {
-					// g1 is disjoint
-					numDisjoint++;				
-				} else {
-					// g1 is excess
-					numExcess++;
-				}
-				
-				i++;
-			} else if (g1.innovation > g2.innovation) { 
-				// This is the case where g2 is disjoint/excess
-			
-				if(i < g1Size) {
-					// g2 is disjoint
-					numDisjoint++;				
-				} else {
-					// g2 is excess
-					numExcess++;
-				}
-				
-				j++;
-			} else {} // Not possible
-		}
-		
-		double n = Math.max(g1Size, g2Size);
+		DeltaInfo i = getDeltaInfo(genome1, genome2);
 		
 		double delta = 
-			c1*(double)numExcess/n + 
-			c2*(double)numDisjoint/n + 
-			c3*totalWeightDifference/n;
+			c1*(double)i.numExcess/i.n + 
+			c2*(double)i.numDisjoint/i.n + 
+			c3*i.totalWeightDifference/i.n;
 			
 		return (float)delta;
 	}
+	
+	/**
+	 * In the form of a string giving detail on the equation, 
+	 * returns the "compatibility" of genome1 and genome2, only considering
+	 * connection genes.
+	 */
+	public static String deltaEquation(Genome genome1, Genome genome2, float c1, float c2, float c3) {
+		DeltaInfo i = getDeltaInfo(genome1, genome2);
+		
+		double delta = 
+			c1*(double)i.numExcess/i.n + 
+			c2*(double)i.numDisjoint/i.n + 
+			c3*i.totalWeightDifference/i.n;
+			
+		return "C1 * " + (int)i.numExcess + "/" + i.n + " + C2 * " + (int)i.numDisjoint + "/" +i. n + " + C3 * " + i.totalWeightDifference + "/" + i.n + " = " + delta;
+	}
+	
+	private static DeltaInfo getDeltaInfo(Genome genome1, Genome genome2) {
+		try {
+			int numExcess = 0;
+			int numDisjoint = 0;
+			int numCommon = 0;
+			double totalWeightDifference = 0;
+		
+			int g1Size = genome1.connectionGenes.size();
+			int g2Size = genome2.connectionGenes.size();
+			int i;
+			int j;
+			for(i = j = 0; i < g1Size || j < g2Size; ) {
+				ConnectionGene g1 = genome1.connectionGenes.get(Math.min(i, g1Size-1)); 
+				ConnectionGene g2 = genome2.connectionGenes.get(Math.min(j, g2Size-1)); 
+			
+				if(g1.innovation == g2.innovation) {
+					numCommon++;
+					totalWeightDifference += Math.abs(g1.weight - g2.weight);
+				
+					i++;
+					j++;	
+				} else if (j >= g2Size) { // case 1a
+					numExcess++;
+					i++;
+				} else if (i >= g1Size) { // case 2a
+					numExcess++;
+					j++;
+				} else if (g1.innovation > g2.innovation) { // case 1b
+					// This is the case where g1 is disjoint/excess
+			
+					if(j < g2Size) {
+						// g1 is disjoint
+						numDisjoint++;				
+					} else {
+						// g1 is excess
+						numExcess++;
+					}
+				
+					i++;
+				} else if (g1.innovation < g2.innovation) { // case 2b
+					// This is the case where g2 is disjoint/excess
+			
+					if(i < g1Size) {
+						// g2 is disjoint
+						numDisjoint++;				
+					} else {
+						// g2 is excess
+						numExcess++;
+					}
+				
+					j++;
+				} else {} // Not possible
+			
+				//System.out.printf("\t(i, j) = (%d, %d)\n", i, j);
+			}
+		
+			//System.out.printf("numDisjoint: %d, numExcess: %d\n", numDisjoint, numExcess);
+			//System.out.printf("g1Size: %d, g2Size: %d\n", g1Size, g2Size);
+		
+			double n = Math.max(g1Size, g2Size);
+		
+			return new DeltaInfo(numExcess, numDisjoint, totalWeightDifference, n);
+		} catch (Exception e) {
+			e.printStackTrace();
+			genome1.printCode();
+			genome2.printCode();
+			
+			return null;
+		}
+	}
+	
+	/**
+	 * Builds a genome object out of the genes provided
+	 */
+	public static Genome buildGenome(ArrayList<ConnectionGene> con, ArrayList<NodeGene> nod) {
+		Genome g = new Genome();
+		g.numSensorNodes = 0;
+		g.numOutputNodes = 0;
+		
+		for(NodeGene n : nod) {
+			g.nodeGenes.add(n); // superCopy also copies genes' disabled member
+			
+			if(n == NodeGene.SENSOR) { g.numSensorNodes++; }
+			if(n == NodeGene.OUTPUT) { g.numOutputNodes++; }
+		}
+		
+		for(ConnectionGene n : con) {
+			g.connectionGenes.add(n.superCopy());
+			g.existingConnections.add(new Point(n.in, n.out));
+		}
+		
+		g.toposort();
+		
+		return g;
+	}
+	
+	/**
+	 * Debug function. Prints code that, when pasted into some function,
+	 * will create an exact copy of this genome object.
+	 */
+	public void printCode() {
+		System.out.println("\n{");
+		System.out.println("\tArrayList<NodeGene> nodeGenes = new ArrayList<>();");
+		for(NodeGene n : this.getNodeGenes()) {
+			System.out.println("\tnodeGenes.add(NodeGene." + n + ");");
+		}
+		System.out.println();
+	
+		System.out.println("\tArrayList<ConnectionGene> connectionGenes = new ArrayList<>();");
+		for(ConnectionGene n : this.getConnectionGenes()) {
+			System.out.println(String.format("\tconnectionGenes.add(ConnectionGene.buildManually(%d, %d, %ff, %s, %d));", n.getIn(), n.getOut(), n.getWeight(), (n.isEnabled()? "true" : "false"), n.getInnovation()));
+		}
+	
+		System.out.println("\tGenome g = Genome.buildGenome(connectionGenes, nodeGenes);");
+		System.out.println("}\n");
+	}
 }
 
+class DeltaInfo {
+	int numExcess = 0;
+	int numDisjoint = 0;
+	double totalWeightDifference = 0;
+	double n = 0;
+	
+	public DeltaInfo(int a, int b, double c, double d) {
+		numExcess = a;
+		numDisjoint = b;
+		totalWeightDifference = c;
+		n = d;
+	}
+}
 
 
 

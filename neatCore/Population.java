@@ -66,7 +66,7 @@ public abstract class Population {
 		handleGeneration();
 		
 		// loop
-		while(getBestRawFitness() < this.targetFitness) {
+		while(continueCondition()) {
 			if(isPaused()) {
 				try { Thread.sleep(100); }
 				catch (InterruptedException e) {}
@@ -80,6 +80,14 @@ public abstract class Population {
 		}
 		
 		finished();
+	}
+	
+	/**
+	 * Called at the end of every generation. The simulation finishes when
+	 * this function returns true.
+	 */
+	protected boolean continueCondition() {
+		return getBestRawFitness() < this.targetFitness;
 	}
 	
 	private void handleGeneration() {
@@ -155,8 +163,13 @@ public abstract class Population {
 				p2 = selectParent(fitnessTotal);
 			} else {
 				Species s = speciesMap.get(p1);
-				if(s == null) { System.out.println("s was NULL"); }
+				if(s == null) { System.out.println("s was NULL"); 
+					categorizeGenome(p1);
+					s = speciesMap.get(p1);
+				}
+				
 				if(fitnessTotalsPerSpecies == null) {System.out.println("fitnessTotalsPerSpecies was null");}
+				
 				p2 = selectParentFromSpecies(s, fitnessTotalsPerSpecies.get(s));
 			}
 			
@@ -209,6 +222,7 @@ public abstract class Population {
 	 */
 	private Genome selectParent(float fitnessTotal) {
 		float val = (float)(Math.random() * fitnessTotal);
+		float valInit = val;
 		
 		for(Genome g : genomes) {
 			Species s = speciesMap.get(g);
@@ -218,8 +232,8 @@ public abstract class Population {
 			}
 		}
 		
-		// this should never happen
-		return null;	
+		// this should never happen, but does happen occasionally for some reason, so...
+		return genomes.get(genomes.size()-1);
 	}
 	
 	/**
@@ -227,6 +241,7 @@ public abstract class Population {
 	 */
 	private Genome selectParentFromSpecies(Species s, float fitnessTotal) {
 		float val = (float)(Math.random() * fitnessTotal);
+		float valInit = val;
 		
 		for(Genome g : s.getGenomes()) {
 			val -= s.getModifiedFitness(g);
@@ -240,9 +255,11 @@ public abstract class Population {
 			System.out.println("Fitness is " + s.getModifiedFitness(g) + " for genome " + g);
 		}
 		System.out.println("Final random value = " + val);
+		System.out.println("Initial random value = " + valInit);
 		
-		// this should never happen
-		return null;
+		// this should never happen, but does happen occasionally for some reason, so...
+		//return null;
+		return s.getGenomes().get(s.getGenomes().size()-1);
 	}
 	
 	/**
@@ -311,6 +328,12 @@ public abstract class Population {
 	 * placed in, then adds g to the overall population.
 	 */
 	private void addGenome(Genome g) {
+		categorizeGenome(g);
+		
+		genomes.add(g);
+	}
+	
+	private void categorizeGenome(Genome g) {
 		Species s = null;
 		for(Species test : species) {
 			if(test.getCompatibility(g) <= COMPATIBILITY_THRESHOLD) {
@@ -327,7 +350,6 @@ public abstract class Population {
 		}
 		
 		speciesMap.put(g, s);
-		genomes.add(g);
 	}
 	
 	/**

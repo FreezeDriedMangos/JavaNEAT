@@ -32,6 +32,18 @@ public class ConnectionGene {
 		this.randomizeWeight();
 	}
 	
+	public static ConnectionGene buildManually(int in, int out, float weight, boolean enabled, int innovation) {
+		ConnectionGene g = new ConnectionGene();
+		
+		g.in = in;
+		g.out = out;
+		g.weight = weight;
+		g.enabled = enabled;
+		g.innovation = innovation;
+		
+		return g;
+	}
+	
 	// ============================================================
 	//
 	//  Weight Adjustment
@@ -109,9 +121,10 @@ public class ConnectionGene {
 	//
 	// ============================================================
 
-	public int   getIn()     { return in;     }
-	public int   getOut()    { return out;    }
-	public float getWeight() { return weight; }
-	public boolean isEnabled() { return enabled; }
+	public int   getInnovation() { return innovation; }
+	public int   getIn()         { return in;     }
+	public int   getOut()        { return out;    }
+	public float getWeight()     { return weight; }
+	public boolean isEnabled()   { return enabled; }
 	
 }
